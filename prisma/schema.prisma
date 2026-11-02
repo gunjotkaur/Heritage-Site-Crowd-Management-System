@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────── Enums ─────────────
+
+enum Role {
+  VISITOR
+  ADMIN
+  STAFF
+}
+
+enum SiteCategory {
+  MONUMENT
+  FORT
+  MUSEUM
+  PALACE
+  TEMPLE
+  OTHER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+  EXPIRED
+}
+
+enum EntryType {
+  ENTRY
+  EXIT
+}
+
+enum CrowdLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  BOOKING
+  CAPACITY_ALERT
+  ANNOUNCEMENT
+  SYSTEM
+}
+
+// ───────────── Models ─────────────
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  emailVerified  DateTime?
+  passwordHash   String?
+  image          String?
+  phone          String?
+  role           Role           @default(VISITOR)
+  isActive       Boolean        @default(true)
+  assignedSiteId String?
+  assignedSite   HeritageSite?  @relation("SiteStaff", fields: [assignedSiteId], references: [id], onDelete: SetNull)
+  bookings       Booking[]
+  entryLogs      EntryLog[]
+  notifications  Notification[]
+  reviews        Review[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([role])
+  @@index([assignedSiteId])
+}
+
+model HeritageSite {
+  id               String            @id @default(cuid())
+  name             String
+  slug             String            @unique
+  category         SiteCategory      @default(MONUMENT)
+  description      String            @db.Text
+  history          String?           @db.Text
+  address          String
+  city             String
+  state            String
+  country          String            @default("India")
+  latitude         Float
+  longitude        Float
+  coverImage       String?
+  images           String[]
+  openingTime      String // "09:00"
+  closingTime      String // "17:30"
+  closedDays       Int[] // 0 = Sunday ... 6 = Saturday
+  maxCapacity      Int // max people allowed inside at once
+  isActive         Boolean           @default(true)
+  staff            User[]            @relation("SiteStaff")
+  ticketCategories TicketCategory[]
+  timeSlots        TimeSlot[]
+  bookings         Booking[]
+  entryLogs        EntryLog[]
+  crowdSnapshots   CrowdSnapshot[]
+  crowdPredictions CrowdPrediction[]
+  reviews          Review[]
+  notifications    Notification[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([city])
+  @@index([isActive])
+}
+
+model TicketCategory {
+  id          String       @id @default(cuid())
+  siteId      String
+  site        HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name        String // Adult, Child, Foreign Tourist...
+  description String?
+  price       Decimal      @db.Decimal(10, 2)
+  currency    String       @default("INR")
+  isActive    Boolean      @default(true)
+  bookings    Booking[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([siteId, name])
+}
+
+model TimeSlot {
+  id          String       @id @default(cuid())
+  siteId      String
+  site        HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date        DateTime     @db.Date
+  startTime   String // "09:00"
+  endTime     String // "11:00"
+  capacity    Int
+  bookedCount Int          @default(0)
+  isActive    Boolean      @default(true)
+  bookings    Booking[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([siteId, date, startTime])
+  @@index([siteId, date])
+}
+
+model Booking {
+  id               String         @id @default(cuid())
+  bookingCode      String         @unique
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  siteId           String
+  site             HeritageSite   @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  timeSlotId       String
+  timeSlot         TimeSlot       @relation(fields: [timeSlotId], references: [id], onDelete: Restrict)
+  ticketCategoryId String
+  ticketCategory   TicketCategory @relation(fields: [ticketCategoryId], references: [id], onDelete: Restrict)
+  quantity         Int
+  totalAmount      Decimal        @db.Decimal(10, 2)
+  status           BookingStatus  @default(PENDING)
+  cancelledAt      DateTime?
+  tickets          Ticket[]
+  payments         Payment[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([siteId])
+  @@index([timeSlotId])
+  @@index([status])
+}
+
+model Ticket {
+  id         String       @id @default(cuid())
+  bookingId  String
+  booking    Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  qrCode     String       @unique
+  holderName String?
+  status     TicketStatus @default(VALID)
+  usedAt     DateTime?
+  entryLogs  EntryLog[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([bookingId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("INR")
+  status        PaymentStatus @default(PENDING)
+  method        String?
+  transactionId String?       @unique
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+model EntryLog {
+  id        String       @id @default(cuid())
+  ticketId  String
+  ticket    Ticket       @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  siteId    String
+  site      HeritageSite @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  staffId   String
+  staff     User         @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  type      EntryType
+  scannedAt DateTime     @default(now())
+
+  @@index([siteId, scannedAt])
+  @@index([ticketId])
+}
+
+model CrowdSnapshot {
+  id               String       @id @default(cuid())
+  siteId           String
+  site             HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  occupancy        Int
+  capacity         Int
+  occupancyPercent Float
+  level            CrowdLevel
+  recordedAt       DateTime     @default(now())
+
+  @@index([siteId, recordedAt])
+}
+
+model CrowdPrediction {
+  id                 String       @id @default(cuid())
+  siteId             String
+  site               HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  predictedFor       DateTime // start of the predicted hour
+  predictedOccupancy Int
+  predictedLevel     CrowdLevel
+  confidence         Float?
+  createdAt          DateTime     @default(now())
+
+  @@unique([siteId, predictedFor])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId    String?
+  site      HeritageSite?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+model Review {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId    String
+  site      HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  rating    Int // 1 to 5, checked in validation
+  comment   String?      @db.Text
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([userId, siteId])
+  @@index([siteId])
+}
