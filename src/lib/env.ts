@@ -3,6 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.url(),
   DIRECT_URL: z.url(),
+  AUTH_SECRET: z.string().min(16),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
 });
 
