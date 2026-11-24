@@ -10,7 +10,10 @@ import {
   CheckCircle,
   Users,
   ShieldCheck,
+  ScanLine,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 
 type AssignedSite = {
   id: string;
@@ -129,7 +132,7 @@ export default function StaffDashboardPage() {
           </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            View your assigned heritage site and submit crowd updates.
+            View your assigned heritage site and manage visitor entry and crowd updates.
           </p>
         </div>
 
@@ -159,6 +162,31 @@ export default function StaffDashboardPage() {
           {success}
         </div>
       )}
+
+      <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-amber-500/15 p-3 text-amber-600">
+              <ScanLine size={28} />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold">Visitor QR Scanner</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Scan visitor tickets to record entry and exit and update site occupancy.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/staff/scan"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400"
+          >
+            Open Scanner
+            <ArrowRight size={18} />
+          </Link>
+        </div>
+      </section>
 
       {loading ? (
         <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
