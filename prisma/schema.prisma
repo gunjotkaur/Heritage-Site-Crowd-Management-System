@@ -68,24 +68,27 @@ enum NotificationType {
 // ───────────── Models ─────────────
 
 model User {
-  id             String         @id @default(cuid())
-  name           String
-  email          String         @unique
-  loginId        String?        @unique
-  emailVerified  DateTime?
-  passwordHash   String?
-  image          String?
-  phone          String?
-  role           Role           @default(VISITOR)
-  isActive       Boolean        @default(true)
-  assignedSiteId String?
-  assignedSite   HeritageSite?  @relation("SiteStaff", fields: [assignedSiteId], references: [id], onDelete: SetNull)
-  bookings       Booking[]
-  entryLogs      EntryLog[]
-  notifications  Notification[]
-  reviews        Review[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                    String           @id @default(cuid())
+  name                  String
+  email                 String           @unique
+  loginId               String?          @unique
+  emailVerified         DateTime?
+  passwordHash          String?
+  image                 String?
+  phone                 String?
+  role                  Role             @default(VISITOR)
+  isActive              Boolean          @default(true)
+  assignedSiteId        String?
+  assignedSite          HeritageSite?    @relation("SiteStaff", fields: [assignedSiteId], references: [id], onDelete: SetNull)
+  bookings              Booking[]
+  entryLogs             EntryLog[]
+  notifications         Notification[]
+  reviews               Review[]
+  crowdUpdatesSubmitted CrowdUpdate[]    @relation("CrowdUpdateSubmitter")
+  crowdUpdatesReviewed  CrowdUpdate[]    @relation("CrowdUpdateReviewer")
+  crowdStatesUpdated    SiteCrowdState[] @relation("CrowdStateUpdater")
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
   @@index([role])
   @@index([assignedSiteId])
@@ -120,6 +123,8 @@ model HeritageSite {
   crowdPredictions CrowdPrediction[]
   reviews          Review[]
   notifications    Notification[]
+  crowdState       SiteCrowdState?
+  crowdUpdates     CrowdUpdate[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -288,4 +293,47 @@ model Review {
 
   @@unique([userId, siteId])
   @@index([siteId])
+}
+
+enum CrowdSource {
+  STAFF_MANUAL
+  ADMIN_MANUAL
+  QR_SCAN
+}
+
+enum CrowdUpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SiteCrowdState {
+  id               String       @id @default(cuid())
+  siteId           String       @unique
+  site             HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  currentOccupancy Int?
+  lastUpdatedAt    DateTime?
+  source           CrowdSource?
+  updatedById      String?
+  updatedBy        User?        @relation("CrowdStateUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model CrowdUpdate {
+  id                String            @id @default(cuid())
+  siteId            String
+  site              HeritageSite      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  submittedById     String
+  submittedBy       User              @relation("CrowdUpdateSubmitter", fields: [submittedById], references: [id])
+  reportedOccupancy Int
+  reason            String?           @db.Text
+  status            CrowdUpdateStatus @default(PENDING)
+  submittedAt       DateTime          @default(now())
+  reviewedById      String?
+  reviewedBy        User?             @relation("CrowdUpdateReviewer", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+
+  @@index([siteId, status])
+  @@index([submittedById])
 }
