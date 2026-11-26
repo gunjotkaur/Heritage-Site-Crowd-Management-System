@@ -129,23 +129,6 @@ export default function HomePage() {
                   About
                 </a>
               </div>
-
-              {/* Sign In and Sign Up */}
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/login"
-                  className="rounded-full border border-white/60 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white hover:text-[#24152d]"
-                >
-                  Sign In
-                </Link>
-
-                <Link
-                  href="/login"
-                  className="rounded-full bg-amber-400 px-5 py-2.5 text-sm font-semibold text-[#211426] transition hover:bg-amber-300"
-                >
-                  Sign Up
-                </Link>
-              </div>
             </nav>
           </header>
 

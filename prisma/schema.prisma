@@ -81,6 +81,7 @@ model User {
   assignedSiteId        String?
   assignedSite          HeritageSite?    @relation("SiteStaff", fields: [assignedSiteId], references: [id], onDelete: SetNull)
   bookings              Booking[]
+  savedPlaces           SavedPlace[]
   entryLogs             EntryLog[]
   notifications         Notification[]
   reviews               Review[]
@@ -118,6 +119,7 @@ model HeritageSite {
   ticketCategories TicketCategory[]
   timeSlots        TimeSlot[]
   bookings         Booking[]
+  savedBy          SavedPlace[]
   entryLogs        EntryLog[]
   crowdSnapshots   CrowdSnapshot[]
   crowdPredictions CrowdPrediction[]
@@ -130,6 +132,18 @@ model HeritageSite {
 
   @@index([city])
   @@index([isActive])
+}
+
+model SavedPlace {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId    String
+  site      HeritageSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, siteId])
+  @@index([siteId])
 }
 
 model TicketCategory {
@@ -208,17 +222,18 @@ model Ticket {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  bookingId     String
-  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  amount        Decimal       @db.Decimal(10, 2)
-  currency      String        @default("INR")
-  status        PaymentStatus @default(PENDING)
-  method        String?
-  transactionId String?       @unique
-  paidAt        DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  bookingId       String
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("INR")
+  status          PaymentStatus @default(PENDING)
+  method          String?
+  razorpayOrderId String?       @unique
+  transactionId   String?       @unique
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([bookingId])
   @@index([status])

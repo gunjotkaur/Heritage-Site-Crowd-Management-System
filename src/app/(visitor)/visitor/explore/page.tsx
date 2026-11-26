@@ -1,15 +1,25 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, MapPin, ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, MapPin, ArrowRight, Bookmark } from "lucide-react";
 import Link from "next/link";
 import { allDestinations } from "@/data/all-destinations";
+function createSlug(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export default function ExplorePage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedState, setSelectedState] = useState("All States");
+  const [savedPlaces, setSavedPlaces] = useState<Record<string, string>>({});
+  const [savingPlace, setSavingPlace] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   const categories = [
     "All",
@@ -24,6 +34,32 @@ export default function ExplorePage() {
     "All States",
     ...Array.from(new Set(allDestinations.map((place) => place.state))).sort(),
   ];
+
+  useEffect(() => {
+    async function loadSavedPlaces() {
+      try {
+        const response = await fetch("/api/visitor/saved-places");
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        const savedMap: Record<string, string> = {};
+
+        data.savedPlaces.forEach(
+          (saved: { site: { id: string; slug: string } }) => {
+            savedMap[saved.site.slug] = saved.site.id;
+          }
+        );
+
+        setSavedPlaces(savedMap);
+      } catch (error) {
+        console.error("Failed to load saved places:", error);
+      }
+    }
+
+    loadSavedPlaces();
+  }, []);
 
   const filteredDestinations = useMemo(() => {
     return allDestinations.filter((place) => {
@@ -43,6 +79,63 @@ export default function ExplorePage() {
       return matchesSearch && matchesCategory && matchesState;
     });
   }, [search, selectedCategory, selectedState]);
+
+  async function handleSavePlace(slug: string) {
+    if (savingPlace) return;
+
+    try {
+      setSavingPlace(slug);
+      setSaveError("");
+
+      let siteId = savedPlaces[slug];
+
+      // Get the real database ID if this place is not saved yet.
+      if (!siteId) {
+        const siteResponse = await fetch(`/api/visitor/places/${slug}`);
+        const siteData = await siteResponse.json();
+
+        if (!siteResponse.ok) {
+          throw new Error("Unable to find this heritage site.");
+        }
+
+        siteId = siteData.site.id;
+      }
+
+      const isSaved = Boolean(savedPlaces[slug]);
+
+      const response = await fetch("/api/visitor/saved-places", {
+        method: isSaved ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ siteId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to update saved places.");
+      }
+
+      setSavedPlaces((previous) => {
+        const updated = { ...previous };
+
+        if (isSaved) {
+          delete updated[slug];
+        } else {
+          updated[slug] = siteId;
+        }
+
+        return updated;
+      });
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "Something went wrong."
+      );
+    } finally {
+      setSavingPlace(null);
+    }
+  }
 
   return (
     <div>
@@ -110,6 +203,12 @@ export default function ExplorePage() {
         ))}
       </div>
 
+      {saveError && (
+        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+          {saveError}
+        </div>
+      )}
+
       {/* Results Count */}
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-bold">
@@ -121,56 +220,87 @@ export default function ExplorePage() {
         </p>
       </div>
 
+
       {/* Destination Grid */}
       {filteredDestinations.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredDestinations.map((place) => (
-            <article
-              key={place.id}
-              className="group overflow-hidden rounded-2xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-lg"
-            >
-              <div className="relative h-52 overflow-hidden bg-muted">
-                {place.image ? (
-                  <img
-                    src={place.image}
-                    alt={place.name}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Image coming soon
-                  </div>
-                )}
+          {filteredDestinations.map((place) => {
+            const siteSlug = createSlug(place.name);
 
-                <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[#24152d]">
-                  {place.category}
-                </span>
-              </div>
+            return (
+              <article
+                key={place.id}
+                className="group overflow-hidden rounded-2xl border border-border bg-card transition duration-300 hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className="relative h-52 overflow-hidden bg-muted">
+                  {place.image ? (
+                    <img
+                      src={place.image}
+                      alt={place.name}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      Image coming soon
+                    </div>
+                  )}
 
-              <div className="p-5">
-                <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin size={14} className="text-amber-500" />
-                  {place.location}, {place.state}
+                  <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[#24152d]">
+                    {place.category}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSavePlace(siteSlug)}
+                    disabled={savingPlace !== null}
+                    aria-label={
+                      savedPlaces[siteSlug]
+                        ? "Remove from saved places"
+                        : "Save place"
+                    }
+                    title={
+                      savedPlaces[siteSlug]
+                        ? "Remove from saved places"
+                        : "Save place"
+                    }
+                    className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full shadow-md transition disabled:opacity-50 ${
+                      savedPlaces[siteSlug]
+                        ? "bg-amber-400 text-[#24152d]"
+                        : "bg-white/90 text-[#24152d] hover:bg-amber-100"
+                    }`}
+                  >
+                    <Bookmark
+                      size={18}
+                      fill={
+                        savedPlaces[siteSlug] ? "currentColor" : "none"
+                      }
+                    />
+                  </button>
                 </div>
 
-                <h3 className="text-lg font-bold">
-                  {place.name}
-                </h3>
+                <div className="p-5">
+                  <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin size={14} className="text-amber-500" />
+                    {place.location}, {place.state}
+                  </div>
 
-                <p className="mt-2 min-h-12 text-sm leading-6 text-muted-foreground">
-                  {place.description}
-                </p>
+                  <h3 className="text-lg font-bold">{place.name}</h3>
 
-                <Link
-                  href={`/visitor/places/${place.id}`}
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-600 transition hover:gap-3 dark:text-amber-400"
-                >
-                  View Details
-                  <ArrowRight size={16} />
-                </Link>
-              </div>
-            </article>
-          ))}
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-muted-foreground">
+                    {place.description}
+                  </p>
+
+                  <Link
+                    href={`/visitor/places/${siteSlug}`}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-600 transition hover:gap-3 dark:text-amber-400"
+                  >
+                    View Details
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">

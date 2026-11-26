@@ -5,6 +5,9 @@ const envSchema = z.object({
   DIRECT_URL: z.url(),
   AUTH_SECRET: z.string().min(16),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
+
+  RAZORPAY_KEY_ID: z.string().min(1),
+  RAZORPAY_KEY_SECRET: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

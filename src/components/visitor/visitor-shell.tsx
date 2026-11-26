@@ -1,9 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import {
   LayoutDashboard,
   Compass,
@@ -25,7 +26,7 @@ const menuItems = [
   { name: "Settings", icon: Settings, href: "/visitor/settings" },
 ];
 
-export default function VisitorShell({
+function VisitorShellContent({
   children,
 }: {
   children: React.ReactNode;
@@ -39,7 +40,7 @@ export default function VisitorShell({
   const border = "border-border";
 
   return (
-    <div className={`min-h-screen ${surface} ${text} transition-colors duration-300`}>
+    <div className={`min-h-screen bg-background ${text} transition-colors duration-300`}>
       <div className="flex min-h-screen">
 
         {/* Mobile Sidebar Overlay */}
@@ -166,5 +167,20 @@ export default function VisitorShell({
         </main>
       </div>
     </div>
+  );
+}
+
+
+export default function VisitorShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={<div className="min-h-screen bg-background" />}
+    >
+      <VisitorShellContent>{children}</VisitorShellContent>
+    </Suspense>
   );
 }

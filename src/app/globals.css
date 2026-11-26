@@ -85,7 +85,7 @@
 
     --radius: 0.625rem;
 
-    --sidebar: #FFFFFF;
+    --sidebar: #F1EEE8;
     --sidebar-foreground: #24152D;
     --sidebar-primary: #160F20;
     --sidebar-primary-foreground: #FFFFFF;
@@ -101,7 +101,7 @@
     --background: #160F20;
     --foreground: #FAF8F4;
 
-    --card: #24152D;
+    --card: #281B32;
     --card-foreground: #FFFFFF;
 
     --popover: #24152D;
@@ -131,7 +131,7 @@
     --chart-4: #C084FC;
     --chart-5: #D97706;
 
-    --sidebar: #24152D;
+    --sidebar: #100B18;
     --sidebar-foreground: #FFFFFF;
     --sidebar-primary: #FBBF24;
     --sidebar-primary-foreground: #160F20;
@@ -157,4 +157,9 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 45vh;
+}
+
+body {
+  width: 100%;
+  overflow-x: hidden;
 }

@@ -92,6 +92,13 @@ const popularPlaces = [
       "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=1000",
   },
 ];
+function createSlug(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export default function VisitorDashboardPage() {
   const pathname = usePathname();
@@ -208,8 +215,8 @@ export default function VisitorDashboardPage() {
                   key={place.name}
                   className={`absolute inset-0 transition-opacity duration-700 ${
                     activeSlide === index
-                      ? "z-10 opacity-100"
-                      : "z-0 opacity-0"
+                      ? "z-10 opacity-100 pointer-events-auto"
+                      : "z-0 opacity-0 pointer-events-none"
                   }`}
                   aria-hidden={activeSlide !== index}
                 >
@@ -235,13 +242,19 @@ export default function VisitorDashboardPage() {
                       {place.location}
                     </p>
 
-                    <button
-                      type="button"
-                      className="mt-7 flex w-fit items-center gap-2 rounded-xl bg-amber-400 px-6 py-3 text-sm font-bold text-[#24152d] transition hover:bg-amber-300"
-                    >
-                      Explore Destination
-                      <ArrowRight size={17} />
-                    </button>
+                    {true ? (
+                      <Link
+                        href={`/visitor/places/${createSlug(place.name)}`}
+                        className="mt-7 flex w-fit items-center gap-2 rounded-xl bg-amber-400 px-6 py-3 text-sm font-bold text-[#24152d] transition hover:bg-amber-300"
+                      >
+                        Explore Destination
+                        <ArrowRight size={17} />
+                      </Link>
+                    ) : (
+                      <span className="mt-7 flex w-fit items-center rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white/80">
+                        Details coming soon
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -356,9 +369,18 @@ export default function VisitorDashboardPage() {
                       {place.location}
                     </p>
 
-                    <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#24152d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500 hover:text-[#24152d]">
-                      View Details <ArrowRight size={16} />
-                    </button>
+                    {true ? (
+                      <Link
+                        href={`/visitor/places/${createSlug(place.name)}`}
+                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-amber-500 hover:text-[#24152d]"
+                      >
+                        View Details <ArrowRight size={16} />
+                      </Link>
+                    ) : (
+                      <span className="mt-5 flex w-full items-center justify-center rounded-xl border border-border px-4 py-3 text-sm font-semibold text-muted-foreground">
+                        Details coming soon
+                      </span>
+                    )}
                   </div>
                 </article>
               ))}
